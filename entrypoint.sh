@@ -26,7 +26,13 @@ if [ $wait_count -ge $max_wait ]; then
     exit 1
 fi
 
-# Start the handler in the foreground
-# 이 스크립트가 컨테이너의 메인 프로세스가 됩니다.
-echo "Starting the handler..."
-exec python handler.py
+# Start server mode based on SERVICE_MODE
+MODE=${SERVICE_MODE:-serverless}
+
+if [ "$MODE" = "api" ]; then
+    echo "Starting FastAPI server mode on 0.0.0.0:8000..."
+    exec uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+else
+    echo "Starting handler in serverless mode..."
+    exec python handler.py
+fi

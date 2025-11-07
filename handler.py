@@ -580,4 +580,8 @@ def handler(job):
             return {"error": f"Base64 인코딩 실패: {e}"}
 
 
-runpod.serverless.start({"handler": handler})
+if os.getenv("SERVICE_MODE", "serverless") == "serverless":
+    runpod.serverless.start({"handler": handler})
+# In API mode, do nothing here to avoid circular import
+else:
+    logger.info("SERVICE_MODE=api: skipping runpod startup (handled by Uvicorn).")

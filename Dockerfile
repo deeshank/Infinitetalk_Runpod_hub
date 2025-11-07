@@ -5,7 +5,7 @@ FROM wlsdml1114/multitalk-base:1.7 as runtime
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
 RUN pip install -U "huggingface_hub[hf_transfer]"
-RUN pip install runpod websocket-client librosa
+RUN pip install runpod websocket-client librosa fastapi "uvicorn[standard]"
 
 WORKDIR /
 
@@ -60,4 +60,5 @@ RUN wget https://huggingface.co/Kijai/MelBandRoFormer_comfy/resolve/main/MelBand
 COPY . .
 RUN chmod +x /entrypoint.sh
 
+EXPOSE 8000
 CMD ["/entrypoint.sh"]
