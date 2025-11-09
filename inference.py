@@ -15,14 +15,12 @@ from handler import (
     get_videos,
     truncate_base64_for_log,
 )
+from handler import client_id as comfy_client_id
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# ComfyUI inside container
 server_address = os.getenv("SERVER_ADDRESS", "127.0.0.1")
-client_id = str(uuid.uuid4())
-
 
 def run_inference(job_input: dict):
     from handler import get_audio_duration  # reuse existing function
@@ -34,7 +32,6 @@ def run_inference(job_input: dict):
     workflow_path = get_workflow_path(input_type, person_count)
     logger.info(f"Workflow: {workflow_path}, type={input_type}, persons={person_count}")
 
-    # Prepare media input
     media_path = None
     if input_type == "image":
         for key in ("image_path", "image_url", "image_base64"):
@@ -51,7 +48,6 @@ def run_inference(job_input: dict):
         if media_path is None:
             media_path = "/examples/image.jpg"
 
-    # Prepare audio inputs
     wav_path = None
     wav_path_2 = None
     for key in ("wav_path", "wav_url", "wav_base64"):
@@ -68,7 +64,6 @@ def run_inference(job_input: dict):
         if wav_path_2 is None:
             wav_path_2 = wav_path
 
-    # Workflow parameter setup
     prompt = load_workflow(workflow_path)
     prompt_text = job_input.get("prompt", "A person talking naturally")
     width = job_input.get("width", 512)
@@ -92,7 +87,6 @@ def run_inference(job_input: dict):
         elif input_type == "video" and "313" in prompt:
             prompt["313"]["inputs"]["audio"] = wav_path_2
 
-    # Ensure ComfyUI is ready
     http_url = f"http://{server_address}:8188/"
     for attempt in range(60):
         try:
@@ -102,8 +96,7 @@ def run_inference(job_input: dict):
         except Exception:
             time.sleep(1)
 
-    # Connect to websocket
-    ws_url = f"ws://{server_address}:8188/ws?clientId={client_id}"
+    ws_url = f"ws://{server_address}:8188/ws?clientId={comfy_client_id}"
     ws = websocket.WebSocket()
     for _ in range(5):
         try:
@@ -124,7 +117,6 @@ def run_inference(job_input: dict):
     if not output_video_path or not os.path.exists(output_video_path):
         return {"error": "No output video found"}
 
-    # Return either base64 or path
     if job_input.get("network_volume"):
         out_path = f"/runpod-volume/infinitetalk_{task_id}.mp4"
         os.makedirs("/runpod-volume", exist_ok=True)

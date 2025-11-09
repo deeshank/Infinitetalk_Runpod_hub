@@ -60,5 +60,8 @@ RUN wget https://huggingface.co/Kijai/MelBandRoFormer_comfy/resolve/main/MelBand
 COPY . .
 RUN chmod +x /entrypoint.sh
 
+# Set default service mode to API to ensure uvicorn runs by default
+ENV SERVICE_MODE=api
+
 EXPOSE 8000
 CMD ["/entrypoint.sh"]

@@ -189,26 +189,43 @@ def get_videos(ws, prompt, input_type="image", person_count="single"):
     for node_id in history["outputs"]:
         node_output = history["outputs"][node_id]
         videos_output = []
-        if "gifs" in node_output:
-            logger.info(
-                f"노드 {node_id}에서 {len(node_output['gifs'])}개의 비디오 발견"
-            )
-            for idx, video in enumerate(node_output["gifs"]):
-                # fullpath를 그대로 반환 (base64 인코딩하지 않음)
-                video_path = video["fullpath"]
-                logger.info(f"비디오 파일 경로: {video_path}")
+        videos_found = False
 
-                # 파일 존재 여부 및 크기 확인
+        if "videos" in node_output:
+            videos_found = True
+            logger.info(
+                f"노드 {node_id}에서 {len(node_output['videos'])}개의 비디오 발견 (정식 비디오 출력)"
+            )
+            for idx, video in enumerate(node_output["videos"]):
+                video_path = video.get("fullpath")
+                logger.info(f"비디오 파일 경로: {video_path}")
                 if os.path.exists(video_path):
                     file_size = os.path.getsize(video_path)
                     logger.info(
-                        f"비디오 {idx+1} 발견: {video_path} (크기: {file_size} bytes)"
+                        f"✅ 비디오 {idx+1} 발견: {video_path} (크기: {file_size} bytes)"
                     )
                 else:
-                    logger.warning(f"비디오 파일이 존재하지 않습니다: {video_path}")
-
+                    logger.warning(f"⚠️ 비디오 파일이 존재하지 않습니다: {video_path}")
                 videos_output.append(video_path)
-        else:
+
+        elif "gifs" in node_output:
+            videos_found = True
+            logger.info(
+                f"노드 {node_id}에서 {len(node_output['gifs'])}개의 GIF 비디오 발견 (미리보기)"
+            )
+            for idx, video in enumerate(node_output["gifs"]):
+                video_path = video.get("fullpath")
+                logger.info(f"GIF 파일 경로: {video_path}")
+                if os.path.exists(video_path):
+                    file_size = os.path.getsize(video_path)
+                    logger.info(
+                        f"GIF {idx+1} 발견: {video_path} (크기: {file_size} bytes)"
+                    )
+                else:
+                    logger.warning(f"⚠️ GIF 파일이 존재하지 않습니다: {video_path}")
+                videos_output.append(video_path)
+
+        if not videos_found:
             logger.info(f"노드 {node_id}에 비디오 출력 없음")
         output_videos[node_id] = videos_output
 
