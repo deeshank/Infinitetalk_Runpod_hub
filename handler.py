@@ -11,6 +11,8 @@ import binascii  # Base64 에러 처리를 위해 import
 import subprocess
 import librosa
 import shutil
+import numpy as np
+import soundfile as sf
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -304,6 +306,22 @@ def parse_bool(v):
     return False
 
 
+def generate_silent_audio(duration_seconds, output_path, sample_rate=16000):
+    """Generate a silent audio file of specified duration"""
+    try:
+        # Generate silent audio (zeros)
+        num_samples = int(duration_seconds * sample_rate)
+        silent_audio = np.zeros(num_samples, dtype=np.float32)
+        
+        # Save as WAV file
+        sf.write(output_path, silent_audio, sample_rate)
+        logger.info(f"✅ Generated silent audio: {duration_seconds}s at {output_path}")
+        return output_path
+    except Exception as e:
+        logger.error(f"❌ Failed to generate silent audio: {e}")
+        return None
+
+
 def handler(job):
     job_input = job.get("input", {})
 
@@ -368,23 +386,41 @@ def handler(job):
     # 오디오 입력 처리 (wav_path, wav_url, wav_base64 중 하나만 사용)
     wav_path = None
     wav_path_2 = None  # 다중 인물용 두 번째 오디오
+    audio_provided = False
 
     if "wav_path" in job_input:
         wav_path = process_input(
             job_input["wav_path"], task_id, "input_audio.wav", "path"
         )
+        audio_provided = True
     elif "wav_url" in job_input:
         wav_path = process_input(
             job_input["wav_url"], task_id, "input_audio.wav", "url"
         )
+        audio_provided = True
     elif "wav_base64" in job_input:
         wav_path = process_input(
             job_input["wav_base64"], task_id, "input_audio.wav", "base64"
         )
+        audio_provided = True
     else:
-        # 기본값 사용
-        wav_path = "/examples/audio.mp3"
-        logger.info("기본 오디오 파일을 사용합니다: /examples/audio.mp3")
+        # No audio provided - check if we should generate silent audio
+        duration_seconds = job_input.get("duration_seconds")
+        if duration_seconds:
+            # Generate silent audio for the requested duration
+            os.makedirs(task_id, exist_ok=True)
+            silent_audio_path = os.path.join(task_id, "silent_audio.wav")
+            wav_path = generate_silent_audio(float(duration_seconds), silent_audio_path)
+            if wav_path:
+                logger.info(f"🔇 No audio provided - generated {duration_seconds}s silent audio for video generation")
+            else:
+                # Fallback to default
+                wav_path = "/examples/audio.mp3"
+                logger.info("기본 오디오 파일을 사용합니다: /examples/audio.mp3")
+        else:
+            # 기본값 사용
+            wav_path = "/examples/audio.mp3"
+            logger.info("기본 오디오 파일을 사용합니다: /examples/audio.mp3")
 
     # 다중 인물용 두 번째 오디오 처리
     if person_count == "multi":
@@ -420,9 +456,14 @@ def handler(job):
     if duration_seconds:
         max_frame = int(fps * float(duration_seconds)) + 81
         logger.info(f"duration_seconds={duration_seconds}s → fps={fps} → max_frame={max_frame}")
+        # Check if audio is long enough
+        audio_duration = get_audio_duration(wav_path)
+        if audio_duration and audio_duration < duration_seconds:
+            logger.warning(f"⚠️ 경고: 오디오 길이({audio_duration:.2f}초)가 요청된 비디오 길이({duration_seconds}초)보다 짧습니다!")
+            logger.warning(f"⚠️ 애니메이션은 오디오 길이까지만 적용되고 나머지는 정적일 수 있습니다.")
     elif max_frame is None:
         logger.info("max_frame이 입력되지 않았습니다. 오디오 길이를 기반으로 자동 계산합니다.")
-        max_frame = calculate_max_frames_from_audio(wav_path, wav_path_2 if person_count == "multi" else None)
+        max_frame = calculate_max_frames_from_audio(wav_path, wav_path_2 if person_count == "multi" else None, fps)
     else:
         logger.info(f"사용자 지정 max_frame: {max_frame}")
     
@@ -441,8 +482,14 @@ def handler(job):
     # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
     motion_frame = job_input.get("motion_frame")
     if motion_frame is None:
-        # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
-        motion_frame = max(9, int(max_frame) - 72)
+        if not audio_provided:
+            # When no audio is provided, use more aggressive motion to ensure animation
+            # Use max_frame - 9 to maximize motion throughout the video
+            motion_frame = max(9, int(max_frame) - 9)
+            logger.info(f"🎬 No audio provided - using aggressive motion_frame={motion_frame} for continuous animation")
+        else:
+            # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
+            motion_frame = max(9, int(max_frame) - 72)
     
     # Apply updates to relevant workflow nodes
     if "270" in prompt:
@@ -457,6 +504,12 @@ def handler(job):
         logger.info(f"노드 194 원본 fps 값: {original_fps}")
         # Change from node reference to direct value
         prompt["194"]["inputs"]["fps"] = fps
+        
+        # If no audio was provided, reduce audio influence
+        if not audio_provided:
+            prompt["194"]["inputs"]["audio_scale"] = 0.1  # Minimal audio influence
+            logger.info(f"노드 194 → audio_scale=0.1 (no audio provided, minimizing audio influence)")
+        
         logger.info(f"노드 194(MultiTalkWav2VecEmbeds) → fps={fps} (overriding input video FPS)")
         logger.info(f"노드 194 업데이트 후 fps 값: {prompt['194']['inputs']['fps']}")
     

@@ -33,6 +33,8 @@ mods_to_pkgs = [
     ("librosa", "librosa"),
     ("runpod", "runpod"),
     ("huggingface_hub", "huggingface_hub[hf_transfer]"),
+    ("numpy", "numpy"),
+    ("soundfile", "soundfile"),
 ]
 missing = []
 for mod, pkg in mods_to_pkgs:

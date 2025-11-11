@@ -14,6 +14,7 @@ from handler import (
     calculate_max_frames_from_audio,
     get_videos,
     truncate_base64_for_log,
+    generate_silent_audio,
 )
 from handler import client_id as comfy_client_id
 
@@ -54,12 +55,26 @@ def run_inference(job_input: dict):
 
     wav_path = None
     wav_path_2 = None
+    audio_provided = False
     for key in ("wav_path", "wav_url", "wav_base64"):
         if key in job_input:
             wav_path = process_input(job_input[key], task_id, "input_audio.wav", key.split("_")[-1])
+            audio_provided = True
             break
     if wav_path is None:
-        wav_path = "/examples/audio.mp3"
+        # No audio provided - check if we should generate silent audio
+        duration_seconds = job_input.get("duration_seconds")
+        if duration_seconds:
+            # Generate silent audio for the requested duration
+            os.makedirs(task_id, exist_ok=True)
+            silent_audio_path = os.path.join(task_id, "silent_audio.wav")
+            wav_path = generate_silent_audio(float(duration_seconds), silent_audio_path)
+            if wav_path:
+                logger.info(f"🔇 No audio provided - generated {duration_seconds}s silent audio")
+            else:
+                wav_path = "/examples/audio.mp3"
+        else:
+            wav_path = "/examples/audio.mp3"
     if person_count == "multi":
         for key in ("wav_path_2", "wav_url_2", "wav_base64_2"):
             if key in job_input:
@@ -81,9 +96,16 @@ def run_inference(job_input: dict):
     if duration_seconds:
         max_frame = int(fps * float(duration_seconds)) + 81
         logger.info(f"duration_seconds={duration_seconds}s → fps={fps} → max_frame={max_frame}")
+        # Check if audio is long enough
+        from handler import get_audio_duration
+        audio_duration = get_audio_duration(wav_path)
+        if audio_duration and audio_duration < duration_seconds:
+            logger.warning(f"⚠️ WARNING: Audio duration ({audio_duration:.2f}s) is shorter than requested video duration ({duration_seconds}s)!")
+            logger.warning(f"⚠️ Animation will only be applied for the audio duration, rest may be static.")
     elif max_frame is None:
         logger.info("max_frame not provided, calculating from audio duration")
-        max_frame = calculate_max_frames_from_audio(wav_path, wav_path_2 if person_count == "multi" else None)
+        from handler import calculate_max_frames_from_audio
+        max_frame = calculate_max_frames_from_audio(wav_path, wav_path_2 if person_count == "multi" else None, fps)
     else:
         logger.info(f"Using user-specified max_frame: {max_frame}")
     
@@ -93,8 +115,13 @@ def run_inference(job_input: dict):
     # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
     motion_frame = job_input.get("motion_frame")
     if motion_frame is None:
-        # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
-        motion_frame = max(9, int(max_frame) - 72)
+        if not audio_provided:
+            # When no audio is provided, use more aggressive motion to ensure animation
+            motion_frame = max(9, int(max_frame) - 9)
+            logger.info(f"🎬 No audio provided - using aggressive motion_frame={motion_frame}")
+        else:
+            # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
+            motion_frame = max(9, int(max_frame) - 72)
 
     if input_type == "image":
         prompt["284"]["inputs"]["image"] = media_path
@@ -115,6 +142,10 @@ def run_inference(job_input: dict):
     # For V2V workflows, override FPS from input video with our specified FPS
     if "194" in prompt:
         prompt["194"]["inputs"]["fps"] = fps
+        # If no audio was provided, reduce audio influence
+        if not audio_provided:
+            prompt["194"]["inputs"]["audio_scale"] = 0.1
+            logger.info(f"Node 194 → audio_scale=0.1 (minimizing audio influence)")
         logger.info(f"Node 194 → fps={fps} (overriding input video FPS)")
     
     # Update node 131 video combine settings
