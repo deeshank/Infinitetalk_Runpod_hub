@@ -438,6 +438,12 @@ def handler(job):
     logger.info(f"trim_to_audio 설정: {trim_to_audio}")
     logger.info(f"최종 FPS 설정: {fps}")
 
+    # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
+    motion_frame = job_input.get("motion_frame")
+    if motion_frame is None:
+        # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
+        motion_frame = max(9, int(max_frame) - 72)
+    
     # Apply updates to relevant workflow nodes
     if "270" in prompt:
         prompt["270"]["inputs"]["value"] = max_frame
@@ -447,12 +453,6 @@ def handler(job):
         logger.info(f"노드 194(MultiTalkWav2VecEmbeds) → fps={fps}")
     if "192" in prompt and "inputs" in prompt["192"]:
         prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
-        # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
-        # The formula ensures continuous motion: motion_frame should be close to frame_window_size
-        motion_frame = job_input.get("motion_frame")
-        if motion_frame is None:
-            # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
-            motion_frame = max(9, int(max_frame) - 72)
         prompt["192"]["inputs"]["motion_frame"] = int(motion_frame)
         logger.info(f"노드 192(WanVideoI2VMultiTalk) → frame_window_size={max_frame}, motion_frame={motion_frame}")
     if "131" in prompt:
@@ -463,7 +463,7 @@ def handler(job):
         logger.info(f"노드 131(VideoCombine) → frame_rate={fps}, trim_to_audio={trim_to_audio}, save_output=True, format=video/h264-mp4")
 
     # Summary log
-    logger.info(f"최종 노드 세팅 → max_frame={max_frame}, fps={fps}, trim_to_audio={trim_to_audio}")
+    logger.info(f"최종 노드 세팅 → max_frame={max_frame}, motion_frame={motion_frame}, fps={fps}, trim_to_audio={trim_to_audio}")
     # ----------------------------------------------------------------
     if not os.path.exists(media_path):
         logger.error(f"미디어 파일이 존재하지 않습니다: {media_path}")

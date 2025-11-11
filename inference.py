@@ -90,6 +90,12 @@ def run_inference(job_input: dict):
     from handler import parse_bool
     trim_to_audio = parse_bool(job_input.get("trim_to_audio", False))
 
+    # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
+    motion_frame = job_input.get("motion_frame")
+    if motion_frame is None:
+        # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
+        motion_frame = max(9, int(max_frame) - 72)
+
     if input_type == "image":
         prompt["284"]["inputs"]["image"] = media_path
     else:
@@ -102,18 +108,8 @@ def run_inference(job_input: dict):
     
     # Update node 192 frame_window_size and motion_frame (critical for video length and animation!)
     if "192" in prompt and "inputs" in prompt["192"]:
-        logger.info(f"🔍 BEFORE UPDATE: Node 192 motion_frame = {prompt['192']['inputs'].get('motion_frame')}")
-        logger.info(f"🔍 job_input.get('motion_frame') = {job_input.get('motion_frame')}")
-        
         prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
-        # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
-        motion_frame = job_input.get("motion_frame")
-        if motion_frame is None:
-            # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
-            motion_frame = max(9, int(max_frame) - 72)
         prompt["192"]["inputs"]["motion_frame"] = int(motion_frame)
-        
-        logger.info(f"🔍 AFTER UPDATE: Node 192 motion_frame = {prompt['192']['inputs'].get('motion_frame')}")
         logger.info(f"✅ Node 192 → frame_window_size={max_frame}, motion_frame={motion_frame}")
     
     # Update node 194 fps
