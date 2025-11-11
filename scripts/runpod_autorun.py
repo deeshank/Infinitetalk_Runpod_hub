@@ -19,7 +19,7 @@ def submit_job(image_url: str, prompt: str, preset="fast"):
             "trim_to_audio": "false",
             # motion_frame controls animation length - will auto-calculate if not provided
             # For 10 seconds at 25fps: max_frame = 331, motion_frame should be ~259 (331-72)
-            # "motion_frame": 259,  # Uncomment to manually control animation length
+            "motion_frame": 259,  # Explicitly set to ensure full animation
             
             # Add your audio file here - example:
             # "wav_url": "https://your-audio-url.com/audio.wav"
@@ -27,6 +27,7 @@ def submit_job(image_url: str, prompt: str, preset="fast"):
             # "wav_path": "/path/to/your/audio.wav"
         }
     }
+    print(f"📤 Submitting job with motion_frame={payload['input'].get('motion_frame')}")
     # resp = requests.post(f"{BASE_URL}/run", params={"preset": preset}, json=payload)
     resp = requests.post(f"{BASE_URL}/run", json=payload)
     if resp.status_code != 200:
@@ -75,7 +76,7 @@ def main():
     
     image_url = "https://i.postimg.cc/nVjhn2vL/pexels-ailin-policano-2150264477-34611213.jpg"
     prompt = """
-A sensual young woman with luscious full lips is posed intimately in a softly-lit boudoir, inspired by [reference image]. She gently smiles, parts her lips, and speaks softly, occasionally blinking and turning her head slightly. Her elegant hair cascades over bare shoulders, and her eyes glimmer invitingly. The scene is cinematic and intimate, focusing on close-up facial features and natural expressions. Style: ultra-realistic, highly detailed, tasteful, HD resolution, bokeh background.
+A seductive woman with full, glossy lips speaking in a sultry, intimate manner. Her lips part slowly, forming sensual shapes as she whispers and breathes. She bites her lower lip gently, licks her lips suggestively, and maintains intense, inviting eye contact. Slow blinks with bedroom eyes. Her mouth moves expressively - pouting, smiling seductively, parting lips provocatively. Head tilts flirtatiously. Smooth, sensual movements throughout. Intimate close-up, soft lighting, highly detailed lips and facial features, photorealistic, alluring atmosphere.
 """
 
     try:

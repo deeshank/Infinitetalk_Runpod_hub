@@ -26,6 +26,10 @@ def run_inference(job_input: dict):
     from handler import get_audio_duration  # reuse existing function
 
     task_id = f"task_{uuid.uuid4()}"
+    logger.info(f"🔍 RECEIVED job_input keys: {list(job_input.keys())}")
+    logger.info(f"🔍 motion_frame in job_input: {job_input.get('motion_frame')}")
+    logger.info(f"🔍 duration_seconds in job_input: {job_input.get('duration_seconds')}")
+    
     input_type = job_input.get("input_type", "image")
     person_count = job_input.get("person_count", "single")
 
@@ -98,6 +102,9 @@ def run_inference(job_input: dict):
     
     # Update node 192 frame_window_size and motion_frame (critical for video length and animation!)
     if "192" in prompt and "inputs" in prompt["192"]:
+        logger.info(f"🔍 BEFORE UPDATE: Node 192 motion_frame = {prompt['192']['inputs'].get('motion_frame')}")
+        logger.info(f"🔍 job_input.get('motion_frame') = {job_input.get('motion_frame')}")
+        
         prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
         # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
         motion_frame = job_input.get("motion_frame")
@@ -105,7 +112,9 @@ def run_inference(job_input: dict):
             # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
             motion_frame = max(9, int(max_frame) - 72)
         prompt["192"]["inputs"]["motion_frame"] = int(motion_frame)
-        logger.info(f"Node 192 → frame_window_size={max_frame}, motion_frame={motion_frame}")
+        
+        logger.info(f"🔍 AFTER UPDATE: Node 192 motion_frame = {prompt['192']['inputs'].get('motion_frame')}")
+        logger.info(f"✅ Node 192 → frame_window_size={max_frame}, motion_frame={motion_frame}")
     
     # Update node 194 fps
     if "194" in prompt:

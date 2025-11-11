@@ -201,8 +201,8 @@
         "291",
         2
       ],
-      "frame_window_size": 81,
-      "motion_frame": 9,
+      "frame_window_size": 331,
+      "motion_frame": 259,
       "force_offload": false,
       "colormatch": "disabled",
       "tiled_vae": false,
