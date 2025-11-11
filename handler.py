@@ -448,22 +448,49 @@ def handler(job):
     if "270" in prompt:
         prompt["270"]["inputs"]["value"] = max_frame
         logger.info(f"노드 270(INTConstant) → value={max_frame}")
+    
+    # For V2V workflows, we need to override the FPS from video input
+    # Node 194 and 131 should use our specified FPS, not the input video's FPS
     if "194" in prompt:
+        # Log the original value before override
+        original_fps = prompt["194"]["inputs"].get("fps")
+        logger.info(f"노드 194 원본 fps 값: {original_fps}")
+        # Change from node reference to direct value
         prompt["194"]["inputs"]["fps"] = fps
-        logger.info(f"노드 194(MultiTalkWav2VecEmbeds) → fps={fps}")
+        logger.info(f"노드 194(MultiTalkWav2VecEmbeds) → fps={fps} (overriding input video FPS)")
+        logger.info(f"노드 194 업데이트 후 fps 값: {prompt['194']['inputs']['fps']}")
+    
     if "192" in prompt and "inputs" in prompt["192"]:
         prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
         prompt["192"]["inputs"]["motion_frame"] = int(motion_frame)
         logger.info(f"노드 192(WanVideoI2VMultiTalk) → frame_window_size={max_frame}, motion_frame={motion_frame}")
+    
     if "131" in prompt:
+        # Log the original value before override
+        original_frame_rate = prompt["131"]["inputs"].get("frame_rate")
+        logger.info(f"노드 131 원본 frame_rate 값: {original_frame_rate}")
+        # Change from node reference to direct value
         prompt["131"]["inputs"]["frame_rate"] = fps
         prompt["131"]["inputs"]["trim_to_audio"] = trim_to_audio
         prompt["131"]["inputs"]["save_output"] = True
         prompt["131"]["inputs"]["format"] = "video/h264-mp4"
-        logger.info(f"노드 131(VideoCombine) → frame_rate={fps}, trim_to_audio={trim_to_audio}, save_output=True, format=video/h264-mp4")
+        logger.info(f"노드 131(VideoCombine) → frame_rate={fps} (overriding input video FPS), trim_to_audio={trim_to_audio}, save_output=True, format=video/h264-mp4")
+        logger.info(f"노드 131 업데이트 후 frame_rate 값: {prompt['131']['inputs']['frame_rate']}")
 
-    # Summary log
+    # CRITICAL FIX: Node 301 limits output frames based on audio embedding count
+    # We need to override it to use max_frame instead
+    if "301" in prompt:
+        original_num_frames = prompt["301"]["inputs"].get("num_frames")
+        logger.info(f"노드 301 원본 num_frames 값: {original_num_frames}")
+        # Override to use node 270 (max_frame) instead of node 194 output
+        prompt["301"]["inputs"]["num_frames"] = ["270", 0]
+        logger.info(f"노드 301(GetImageRangeFromBatch) → num_frames=[270, 0] (using max_frame instead of audio frame count)")
+    
+    # Summary log - also log what node 194 will receive
     logger.info(f"최종 노드 세팅 → max_frame={max_frame}, motion_frame={motion_frame}, fps={fps}, trim_to_audio={trim_to_audio}")
+    logger.info(f"노드 194 최종 입력값 확인:")
+    logger.info(f"  - num_frames: {prompt['194']['inputs'].get('num_frames')}")
+    logger.info(f"  - fps: {prompt['194']['inputs'].get('fps')}")
     # ----------------------------------------------------------------
     if not os.path.exists(media_path):
         logger.error(f"미디어 파일이 존재하지 않습니다: {media_path}")

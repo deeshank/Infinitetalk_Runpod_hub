@@ -112,10 +112,10 @@ def run_inference(job_input: dict):
         prompt["192"]["inputs"]["motion_frame"] = int(motion_frame)
         logger.info(f"✅ Node 192 → frame_window_size={max_frame}, motion_frame={motion_frame}")
     
-    # Update node 194 fps
+    # For V2V workflows, override FPS from input video with our specified FPS
     if "194" in prompt:
         prompt["194"]["inputs"]["fps"] = fps
-        logger.info(f"Node 194 → fps={fps}")
+        logger.info(f"Node 194 → fps={fps} (overriding input video FPS)")
     
     # Update node 131 video combine settings
     if "131" in prompt:
@@ -123,7 +123,15 @@ def run_inference(job_input: dict):
         prompt["131"]["inputs"]["trim_to_audio"] = trim_to_audio
         prompt["131"]["inputs"]["save_output"] = True
         prompt["131"]["inputs"]["format"] = "video/h264-mp4"
-        logger.info(f"Node 131 → frame_rate={fps}, trim_to_audio={trim_to_audio}")
+        logger.info(f"Node 131 → frame_rate={fps} (overriding input video FPS), trim_to_audio={trim_to_audio}")
+    
+    # CRITICAL FIX: Node 301 limits output frames based on audio embedding count
+    # We need to override it to use max_frame instead
+    if "301" in prompt:
+        logger.info(f"Node 301 original num_frames: {prompt['301']['inputs'].get('num_frames')}")
+        # Override to use node 270 (max_frame) instead of node 194 output
+        prompt["301"]["inputs"]["num_frames"] = ["270", 0]
+        logger.info(f"✅ Node 301 → num_frames=[270, 0] (using max_frame instead of audio frame count)")
     
     if person_count == "multi":
         if input_type == "image" and "307" in prompt:
