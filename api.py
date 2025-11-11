@@ -192,6 +192,6 @@ async def infer(request: Request, output: str = Query("file", enum=["file", "bas
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "8000"))
+    port = int(os.getenv("PORT", "8001"))
     logger.info(f"Starting InfiniteTalk FastAPI server on 0.0.0.0:{port}")
     uvicorn.run("api:app", host="0.0.0.0", port=port)

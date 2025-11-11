@@ -4,7 +4,7 @@ set -euo pipefail
 REPO_URL="${REPO_URL:-https://github.com/deeshank/Infinitetalk_Runpod_hub.git}"
 BRANCH="${BRANCH:-main}"
 APP_DIR="${APP_DIR:/workspace}"
-PORT="${PORT:-8000}"
+PORT="${PORT:-8001}"
 SERVER_ADDRESS="${SERVER_ADDRESS:-127.0.0.1}"
 RELOAD="${RELOAD:-1}"
 
