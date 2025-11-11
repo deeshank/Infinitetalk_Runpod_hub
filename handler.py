@@ -457,12 +457,18 @@ def handler(job):
     if "194" in prompt:
         prompt["194"]["inputs"]["fps"] = fps
         logger.info(f"노드 194(MultiTalkWav2VecEmbeds) → fps={fps}")
+    if "192" in prompt and "inputs" in prompt["192"]:
+        prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
+        logger.info(f"노드 192(WanVideoI2VMultiTalk) → frame_window_size={max_frame}")
     if "131" in prompt:
         prompt["131"]["inputs"]["frame_rate"] = fps
         prompt["131"]["inputs"]["trim_to_audio"] = trim_to_audio
         prompt["131"]["inputs"]["save_output"] = True
         prompt["131"]["inputs"]["format"] = "video/h264-mp4"
         logger.info(f"노드 131(VideoCombine) → frame_rate={fps}, trim_to_audio={trim_to_audio}, save_output=True, format=video/h264-mp4")
+
+    # Summary log
+    logger.info(f"최종 노드 세팅 → max_frame={max_frame}, fps={fps}, trim_to_audio={trim_to_audio}")
     # ----------------------------------------------------------------
     if not os.path.exists(media_path):
         logger.error(f"미디어 파일이 존재하지 않습니다: {media_path}")
