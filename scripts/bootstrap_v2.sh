@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="${REPO_URL:-https://github.com/deeshank/Infinitetalk_Runpod_hub.git}"
 BRANCH="${BRANCH:-dev}"
 APP_DIR="${APP_DIR:-/workspace/app}"
-PORT="${PORT:-8000}"
+PORT="${PORT:-8001}"
 SERVER_ADDRESS="${SERVER_ADDRESS:-127.0.0.1}"
 RELOAD="${RELOAD:-1}"
 
@@ -20,14 +20,29 @@ if ! command -v git >/dev/null 2>&1; then
   apt-get update && apt-get install -y git curl wget && rm -rf /var/lib/apt/lists/*
 fi
 
+PY="$(command -v python3 || command -v python)"
+PIP="$PY -m pip"
+
 echo "[bootstrap_v2] Ensuring Python dependencies..."
-python3 - <<'PY'
-import importlib, sys, subprocess
-pkgs = ["fastapi", "uvicorn[standard]", "websocket-client", "runpod", "librosa", "huggingface_hub[hf_transfer]"]
-missing = [p for p in ["fastapi","uvicorn","websocket","librosa","runpod","huggingface_hub"] if importlib.util.find_spec(p) is None]
+$PY - <<'PY'
+import sys, subprocess
+mods_to_pkgs = [
+    ("fastapi", "fastapi"),
+    ("uvicorn", "uvicorn[standard]"),
+    ("websocket", "websocket-client"),
+    ("librosa", "librosa"),
+    ("runpod", "runpod"),
+    ("huggingface_hub", "huggingface_hub[hf_transfer]"),
+]
+missing = []
+for mod, pkg in mods_to_pkgs:
+    try:
+        __import__(mod)
+    except Exception:
+        missing.append(pkg)
 if missing:
-    print("[bootstrap_v2] Installing deps:", pkgs)
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-U"] + pkgs)
+    print("[bootstrap_v2] Installing deps:", missing)
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-U"] + missing)
 else:
     print("[bootstrap_v2] FastAPI deps already satisfied")
 PY

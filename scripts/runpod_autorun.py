@@ -3,7 +3,7 @@ import time
 import sys
 import requests
 
-BASE_URL = "https://t1jtxqglt6iin8-8000.proxy.runpod.net"
+BASE_URL = "https://u84vw2s5g9q7rs-8001.proxy.runpod.net"
 
 def submit_job(image_url: str, prompt: str, preset="fast"):
     payload = {
