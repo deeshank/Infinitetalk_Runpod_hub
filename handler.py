@@ -421,7 +421,36 @@ def handler(job):
 
     prompt = load_workflow(workflow_path)
 
-    # 파일 존재 여부 확인
+    # ---------------- Video length and fps controls ----------------
+    fps = int(job_input.get("fps", 25))
+    duration_seconds = job_input.get("duration_seconds")
+    max_frame = job_input.get("max_frame")
+
+    if duration_seconds:
+        max_frame = int(fps * float(duration_seconds)) + 81
+        logger.info(f"duration_seconds={duration_seconds}s → fps={fps} → max_frame={max_frame}")
+    elif max_frame is None:
+        logger.info("max_frame이 입력되지 않았습니다. 오디오 길이를 기반으로 자동 계산합니다.")
+        max_frame = calculate_max_frames_from_audio(wav_path, wav_path_2 if person_count == "multi" else None)
+    else:
+        logger.info(f"사용자 지정 max_frame: {max_frame}")
+
+    trim_to_audio = bool(job_input.get("trim_to_audio", False))
+    logger.info(f"trim_to_audio 설정: {trim_to_audio}")
+    logger.info(f"최종 FPS 설정: {fps}")
+
+    # Apply updates to relevant workflow nodes
+    if "270" in prompt:
+        prompt["270"]["inputs"]["value"] = max_frame
+        logger.info(f"노드 270(INTConstant) → value={max_frame}")
+    if "194" in prompt:
+        prompt["194"]["inputs"]["fps"] = fps
+        logger.info(f"노드 194(MultiTalkWav2VecEmbeds) → fps={fps}")
+    if "131" in prompt:
+        prompt["131"]["inputs"]["frame_rate"] = fps
+        prompt["131"]["inputs"]["trim_to_audio"] = trim_to_audio
+        logger.info(f"노드 131(VideoCombine) → frame_rate={fps}, trim_to_audio={trim_to_audio}")
+    # ----------------------------------------------------------------
     if not os.path.exists(media_path):
         logger.error(f"미디어 파일이 존재하지 않습니다: {media_path}")
         return {"error": f"미디어 파일을 찾을 수 없습니다: {media_path}"}
