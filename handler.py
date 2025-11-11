@@ -293,6 +293,17 @@ def calculate_max_frames_from_audio(wav_path, wav_path_2=None, fps=25):
     return max_frames
 
 
+def parse_bool(v):
+    """Converts various truthy/falsy representations to a proper boolean"""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v != 0
+    if isinstance(v, str):
+        return v.strip().lower() in {"true", "1", "yes", "on"}
+    return False
+
+
 def handler(job):
     job_input = job.get("input", {})
 
@@ -435,7 +446,7 @@ def handler(job):
     else:
         logger.info(f"사용자 지정 max_frame: {max_frame}")
 
-    trim_to_audio = bool(job_input.get("trim_to_audio", False))
+    trim_to_audio = parse_bool(job_input.get("trim_to_audio", False))
     logger.info(f"trim_to_audio 설정: {trim_to_audio}")
     logger.info(f"최종 FPS 설정: {fps}")
 
