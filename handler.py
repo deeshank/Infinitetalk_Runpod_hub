@@ -309,16 +309,30 @@ def parse_bool(v):
 def generate_silent_audio(duration_seconds, output_path, sample_rate=16000):
     """Generate a silent audio file of specified duration"""
     try:
+        # Ensure output directory exists
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        
         # Generate silent audio (zeros)
         num_samples = int(duration_seconds * sample_rate)
         silent_audio = np.zeros(num_samples, dtype=np.float32)
         
         # Save as WAV file
         sf.write(output_path, silent_audio, sample_rate)
-        logger.info(f"✅ Generated silent audio: {duration_seconds}s at {output_path}")
-        return output_path
+        
+        # Verify file was created
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            logger.info(f"✅ Generated silent audio: {duration_seconds}s at {output_path} ({file_size} bytes)")
+            return output_path
+        else:
+            logger.error(f"❌ Silent audio file was not created at {output_path}")
+            return None
     except Exception as e:
         logger.error(f"❌ Failed to generate silent audio: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return None
 
 
@@ -408,15 +422,31 @@ def handler(job):
         duration_seconds = job_input.get("duration_seconds")
         if duration_seconds:
             # Generate silent audio for the requested duration
-            os.makedirs(task_id, exist_ok=True)
-            silent_audio_path = os.path.join(task_id, "silent_audio.wav")
+            # Use ComfyUI's input directory for better compatibility
+            comfy_input_dir = "/ComfyUI/input"
+            if not os.path.exists(comfy_input_dir):
+                comfy_input_dir = "/workspace/ComfyUI/input"
+            if not os.path.exists(comfy_input_dir):
+                # Fallback to task directory
+                comfy_input_dir = os.path.abspath(task_id)
+            
+            os.makedirs(comfy_input_dir, exist_ok=True)
+            silent_audio_filename = f"silent_audio_{task_id}.wav"
+            silent_audio_path = os.path.join(comfy_input_dir, silent_audio_filename)
+            
             wav_path = generate_silent_audio(float(duration_seconds), silent_audio_path)
-            if wav_path:
-                logger.info(f"🔇 No audio provided - generated {duration_seconds}s silent audio for video generation")
+            if wav_path and os.path.exists(wav_path):
+                # Return just the filename if it's in ComfyUI's input directory
+                if comfy_input_dir in ["/ComfyUI/input", "/workspace/ComfyUI/input"]:
+                    wav_path = silent_audio_filename
+                    logger.info(f"🔇 No audio provided - generated {duration_seconds}s silent audio: {wav_path}")
+                else:
+                    logger.info(f"🔇 No audio provided - generated {duration_seconds}s silent audio at {wav_path}")
+                logger.info(f"Silent audio file size: {os.path.getsize(os.path.join(comfy_input_dir, silent_audio_filename) if comfy_input_dir in ['/ComfyUI/input', '/workspace/ComfyUI/input'] else wav_path)} bytes")
             else:
                 # Fallback to default
                 wav_path = "/examples/audio.mp3"
-                logger.info("기본 오디오 파일을 사용합니다: /examples/audio.mp3")
+                logger.info("Silent audio generation failed, using default: /examples/audio.mp3")
         else:
             # 기본값 사용
             wav_path = "/examples/audio.mp3"

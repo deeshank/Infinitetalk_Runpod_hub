@@ -66,11 +66,23 @@ def run_inference(job_input: dict):
         duration_seconds = job_input.get("duration_seconds")
         if duration_seconds:
             # Generate silent audio for the requested duration
-            os.makedirs(task_id, exist_ok=True)
-            silent_audio_path = os.path.join(task_id, "silent_audio.wav")
+            # Use ComfyUI's input directory for better compatibility
+            comfy_input_dir = "/ComfyUI/input"
+            if not os.path.exists(comfy_input_dir):
+                comfy_input_dir = "/workspace/ComfyUI/input"
+            if not os.path.exists(comfy_input_dir):
+                comfy_input_dir = os.path.abspath(task_id)
+            
+            os.makedirs(comfy_input_dir, exist_ok=True)
+            silent_audio_filename = f"silent_audio_{task_id}.wav"
+            silent_audio_path = os.path.join(comfy_input_dir, silent_audio_filename)
+            
             wav_path = generate_silent_audio(float(duration_seconds), silent_audio_path)
-            if wav_path:
-                logger.info(f"🔇 No audio provided - generated {duration_seconds}s silent audio")
+            if wav_path and os.path.exists(wav_path):
+                # Return just the filename if it's in ComfyUI's input directory
+                if comfy_input_dir in ["/ComfyUI/input", "/workspace/ComfyUI/input"]:
+                    wav_path = silent_audio_filename
+                logger.info(f"🔇 No audio provided - generated {duration_seconds}s silent audio: {wav_path}")
             else:
                 wav_path = "/examples/audio.mp3"
         else:
