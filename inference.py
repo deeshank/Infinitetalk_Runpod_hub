@@ -96,10 +96,16 @@ def run_inference(job_input: dict):
     prompt["246"]["inputs"]["value"] = height
     prompt["270"]["inputs"]["value"] = max_frame
     
-    # Update node 192 frame_window_size (critical for video length!)
+    # Update node 192 frame_window_size and motion_frame (critical for video length and animation!)
     if "192" in prompt and "inputs" in prompt["192"]:
         prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
-        logger.info(f"Node 192 → frame_window_size={max_frame}")
+        # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
+        motion_frame = job_input.get("motion_frame")
+        if motion_frame is None:
+            # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
+            motion_frame = max(9, int(max_frame) - 72)
+        prompt["192"]["inputs"]["motion_frame"] = int(motion_frame)
+        logger.info(f"Node 192 → frame_window_size={max_frame}, motion_frame={motion_frame}")
     
     # Update node 194 fps
     if "194" in prompt:

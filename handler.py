@@ -447,7 +447,14 @@ def handler(job):
         logger.info(f"노드 194(MultiTalkWav2VecEmbeds) → fps={fps}")
     if "192" in prompt and "inputs" in prompt["192"]:
         prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
-        logger.info(f"노드 192(WanVideoI2VMultiTalk) → frame_window_size={max_frame}")
+        # Calculate motion_frame: use user input or default to max_frame - 72 (keeps animation throughout)
+        # The formula ensures continuous motion: motion_frame should be close to frame_window_size
+        motion_frame = job_input.get("motion_frame")
+        if motion_frame is None:
+            # Default: max_frame - 72 ensures continuous animation (72 is the overlap buffer)
+            motion_frame = max(9, int(max_frame) - 72)
+        prompt["192"]["inputs"]["motion_frame"] = int(motion_frame)
+        logger.info(f"노드 192(WanVideoI2VMultiTalk) → frame_window_size={max_frame}, motion_frame={motion_frame}")
     if "131" in prompt:
         prompt["131"]["inputs"]["frame_rate"] = fps
         prompt["131"]["inputs"]["trim_to_audio"] = trim_to_audio

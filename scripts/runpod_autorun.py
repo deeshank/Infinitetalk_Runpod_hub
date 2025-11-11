@@ -14,10 +14,13 @@ def submit_job(image_url: str, prompt: str, preset="fast"):
             "prompt": prompt,
             "width": 512,
             "height": 512,
-            "max_frame": 1800,
             "duration_seconds": 10,
             "fps": 25,
             "trim_to_audio": "false",
+            # motion_frame controls animation length - will auto-calculate if not provided
+            # For 10 seconds at 25fps: max_frame = 331, motion_frame should be ~259 (331-72)
+            # "motion_frame": 259,  # Uncomment to manually control animation length
+            
             # Add your audio file here - example:
             # "wav_url": "https://your-audio-url.com/audio.wav"
             # OR use a local path if running in container:
@@ -72,7 +75,7 @@ def main():
     
     image_url = "https://i.postimg.cc/nVjhn2vL/pexels-ailin-policano-2150264477-34611213.jpg"
     prompt = """
-A sensual young woman with luscious full lips, inspired by [reference image], posed intimately in a softly-lit boudoir. She gazes seductively at the camera, her lips slightly parted, conveying desire and confidence. Her elegant hair cascades over bare shoulders. The scene highlights her smooth, flawless skin, glistening under warm ambient lighting. Subtle details show the softness of her lips and playful expression. She wears delicate lace lingerie, partially undone, inviting the viewer’s gaze. The composition is cinematic and artistic, focusing on close-up facial features, glossy lips, glimmering eyes, and tantalizing body language. Style: ultra-realistic, highly detailed, tasteful, LoRA enhanced, HD resolution, bokeh background, intimate mood, hint of mystery and passion.
+A sensual young woman with luscious full lips is posed intimately in a softly-lit boudoir, inspired by [reference image]. She gently smiles, parts her lips, and speaks softly, occasionally blinking and turning her head slightly. Her elegant hair cascades over bare shoulders, and her eyes glimmer invitingly. The scene is cinematic and intimate, focusing on close-up facial features and natural expressions. Style: ultra-realistic, highly detailed, tasteful, HD resolution, bokeh background.
 """
 
     try:
