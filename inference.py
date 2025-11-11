@@ -68,9 +68,23 @@ def run_inference(job_input: dict):
     prompt_text = job_input.get("prompt", "A person talking naturally")
     width = job_input.get("width", 512)
     height = job_input.get("height", 512)
+    
+    # Video length and fps controls
+    fps = int(job_input.get("fps", 25))
+    duration_seconds = job_input.get("duration_seconds")
     max_frame = job_input.get("max_frame")
-    if max_frame is None:
+    
+    if duration_seconds:
+        max_frame = int(fps * float(duration_seconds)) + 81
+        logger.info(f"duration_seconds={duration_seconds}s → fps={fps} → max_frame={max_frame}")
+    elif max_frame is None:
+        logger.info("max_frame not provided, calculating from audio duration")
         max_frame = calculate_max_frames_from_audio(wav_path, wav_path_2 if person_count == "multi" else None)
+    else:
+        logger.info(f"Using user-specified max_frame: {max_frame}")
+    
+    from handler import parse_bool
+    trim_to_audio = parse_bool(job_input.get("trim_to_audio", False))
 
     if input_type == "image":
         prompt["284"]["inputs"]["image"] = media_path
@@ -81,6 +95,25 @@ def run_inference(job_input: dict):
     prompt["245"]["inputs"]["value"] = width
     prompt["246"]["inputs"]["value"] = height
     prompt["270"]["inputs"]["value"] = max_frame
+    
+    # Update node 192 frame_window_size (critical for video length!)
+    if "192" in prompt and "inputs" in prompt["192"]:
+        prompt["192"]["inputs"]["frame_window_size"] = int(max_frame)
+        logger.info(f"Node 192 → frame_window_size={max_frame}")
+    
+    # Update node 194 fps
+    if "194" in prompt:
+        prompt["194"]["inputs"]["fps"] = fps
+        logger.info(f"Node 194 → fps={fps}")
+    
+    # Update node 131 video combine settings
+    if "131" in prompt:
+        prompt["131"]["inputs"]["frame_rate"] = fps
+        prompt["131"]["inputs"]["trim_to_audio"] = trim_to_audio
+        prompt["131"]["inputs"]["save_output"] = True
+        prompt["131"]["inputs"]["format"] = "video/h264-mp4"
+        logger.info(f"Node 131 → frame_rate={fps}, trim_to_audio={trim_to_audio}")
+    
     if person_count == "multi":
         if input_type == "image" and "307" in prompt:
             prompt["307"]["inputs"]["audio"] = wav_path_2

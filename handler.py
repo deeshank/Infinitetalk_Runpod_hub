@@ -410,26 +410,6 @@ def handler(job):
     width = job_input.get("width", 512)
     height = job_input.get("height", 512)
 
-    # max_frame 설정 (입력이 없으면 오디오 길이 기반으로 자동 계산)
-    max_frame = job_input.get("max_frame")
-    if max_frame is None:
-        logger.info(
-            "max_frame이 입력되지 않았습니다. 오디오 길이를 기반으로 자동 계산합니다."
-        )
-        max_frame = calculate_max_frames_from_audio(
-            wav_path, wav_path_2 if person_count == "multi" else None
-        )
-    else:
-        logger.info(f"사용자 지정 max_frame: {max_frame}")
-
-    logger.info(
-        f"워크플로우 설정: prompt='{prompt_text}', width={width}, height={height}, max_frame={max_frame}"
-    )
-    logger.info(f"미디어 경로: {media_path}")
-    logger.info(f"오디오 경로: {wav_path}")
-    if person_count == "multi":
-        logger.info(f"두 번째 오디오 경로: {wav_path_2}")
-
     prompt = load_workflow(workflow_path)
 
     # ---------------- Video length and fps controls ----------------
@@ -445,6 +425,14 @@ def handler(job):
         max_frame = calculate_max_frames_from_audio(wav_path, wav_path_2 if person_count == "multi" else None)
     else:
         logger.info(f"사용자 지정 max_frame: {max_frame}")
+    
+    logger.info(
+        f"워크플로우 설정: prompt='{prompt_text}', width={width}, height={height}, max_frame={max_frame}"
+    )
+    logger.info(f"미디어 경로: {media_path}")
+    logger.info(f"오디오 경로: {wav_path}")
+    if person_count == "multi":
+        logger.info(f"두 번째 오디오 경로: {wav_path_2}")
 
     trim_to_audio = parse_bool(job_input.get("trim_to_audio", False))
     logger.info(f"trim_to_audio 설정: {trim_to_audio}")

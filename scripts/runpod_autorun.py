@@ -14,7 +14,14 @@ def submit_job(image_url: str, prompt: str, preset="fast"):
             "prompt": prompt,
             "width": 512,
             "height": 512,
-            "max_frame": 1800
+            "max_frame": 1800,
+            "duration_seconds": 10,
+            "fps": 25,
+            "trim_to_audio": "false",
+            # Add your audio file here - example:
+            # "wav_url": "https://your-audio-url.com/audio.wav"
+            # OR use a local path if running in container:
+            # "wav_path": "/path/to/your/audio.wav"
         }
     }
     # resp = requests.post(f"{BASE_URL}/run", params={"preset": preset}, json=payload)
