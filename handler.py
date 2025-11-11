@@ -449,7 +449,9 @@ def handler(job):
     if "131" in prompt:
         prompt["131"]["inputs"]["frame_rate"] = fps
         prompt["131"]["inputs"]["trim_to_audio"] = trim_to_audio
-        logger.info(f"노드 131(VideoCombine) → frame_rate={fps}, trim_to_audio={trim_to_audio}")
+        prompt["131"]["inputs"]["save_output"] = True
+        prompt["131"]["inputs"]["format"] = "video/h264-mp4"
+        logger.info(f"노드 131(VideoCombine) → frame_rate={fps}, trim_to_audio={trim_to_audio}, save_output=True, format=video/h264-mp4")
     # ----------------------------------------------------------------
     if not os.path.exists(media_path):
         logger.error(f"미디어 파일이 존재하지 않습니다: {media_path}")
